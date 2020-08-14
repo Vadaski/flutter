@@ -1,8 +1,10 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 import 'dart:async';
+
+import 'package:meta/meta.dart';
 
 import '../base/common.dart';
 import '../build_info.dart';
@@ -14,23 +16,33 @@ import '../web/compile.dart';
 import 'build.dart';
 
 class BuildWebCommand extends BuildSubCommand {
-  BuildWebCommand() {
+  BuildWebCommand({
+    @required bool verboseHelp,
+  }) {
+    addTreeShakeIconsFlag(enabledByDefault: false);
     usesTargetOption();
     usesPubOption();
     addBuildModeFlags(excludeDebug: true);
-    usesDartDefines();
+    usesDartDefineOption();
+    addEnableExperimentation(hide: !verboseHelp);
+    addNullSafetyModeOptions(hide: !verboseHelp);
     argParser.addFlag('web-initialize-platform',
         defaultsTo: true,
         negatable: true,
         hide: true,
         help: 'Whether to automatically invoke webOnlyInitializePlatform.',
     );
+    argParser.addFlag('csp',
+      defaultsTo: false,
+      negatable: false,
+      help: 'Disable dynamic generation of code in the generated output. '
+        'This is necessary to satisfy CSP restrictions (see http://www.w3.org/TR/CSP/).'
+    );
   }
 
   @override
   Future<Set<DevelopmentArtifact>> get requiredArtifacts async =>
       const <DevelopmentArtifact>{
-        DevelopmentArtifact.universal,
         DevelopmentArtifact.web,
       };
 
@@ -41,7 +53,7 @@ class BuildWebCommand extends BuildSubCommand {
   bool get hidden => !featureFlags.isWebEnabled;
 
   @override
-  final String description = 'build a web application bundle.';
+  final String description = 'Build a web application bundle.';
 
   @override
   Future<FlutterCommandResult> runCommand() async {
@@ -59,8 +71,8 @@ class BuildWebCommand extends BuildSubCommand {
       target,
       buildInfo,
       boolArg('web-initialize-platform'),
-      dartDefines,
+      boolArg('csp'),
     );
-    return null;
+    return FlutterCommandResult.success();
   }
 }

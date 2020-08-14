@@ -1,6 +1,8 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+// @dart = 2.8
 
 import 'dart:ui' as ui;
 
@@ -205,7 +207,7 @@ void main() {
 
   test('Should synthesize kPrimaryButton for stylus', () {
     final Offset location = const Offset(10.0, 10.0) * ui.window.devicePixelRatio;
-    for (PointerDeviceKind kind in <PointerDeviceKind>[
+    for (final PointerDeviceKind kind in <PointerDeviceKind>[
       PointerDeviceKind.stylus,
       PointerDeviceKind.invertedStylus,
     ]) {
@@ -268,7 +270,7 @@ void main() {
 
   test('Should not synthesize kPrimaryButton for mouse', () {
     final Offset location = const Offset(10.0, 10.0) * ui.window.devicePixelRatio;
-    for (PointerDeviceKind kind in <PointerDeviceKind>[
+    for (final PointerDeviceKind kind in <PointerDeviceKind>[
       PointerDeviceKind.mouse,
     ]) {
       final ui.PointerDataPacket packet = ui.PointerDataPacket(

@@ -1,6 +1,8 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+// @dart = 2.8
 
 import 'dart:ui';
 
@@ -53,6 +55,7 @@ class MaterialButton extends StatelessWidget {
     @required this.onPressed,
     this.onLongPress,
     this.onHighlightChanged,
+    this.mouseCursor,
     this.textTheme,
     this.textColor,
     this.disabledTextColor,
@@ -69,6 +72,7 @@ class MaterialButton extends StatelessWidget {
     this.highlightElevation,
     this.disabledElevation,
     this.padding,
+    this.visualDensity,
     this.shape,
     this.clipBehavior = Clip.none,
     this.focusNode,
@@ -114,6 +118,9 @@ class MaterialButton extends StatelessWidget {
   /// [State.setState] is not allowed).
   final ValueChanged<bool> onHighlightChanged;
 
+  /// {@macro flutter.material.button.mouseCursor}
+  final MouseCursor mouseCursor;
+
   /// Defines the button's base colors, and the defaults for the button's minimum
   /// size, internal padding, and shape.
   ///
@@ -122,8 +129,9 @@ class MaterialButton extends StatelessWidget {
 
   /// The color to use for this button's text.
   ///
-  /// The button's [Material.textStyle] will be the current theme's button
-  /// text style, [ThemeData.textTheme.button], configured with this color.
+  /// The button's [Material.textStyle] will be the current theme's button text
+  /// style, [TextTheme.button] of [ThemeData.textTheme], configured with this
+  /// color.
   ///
   /// The default text color depends on the button theme's text theme,
   /// [ButtonThemeData.textTheme].
@@ -139,8 +147,9 @@ class MaterialButton extends StatelessWidget {
 
   /// The color to use for this button's text when the button is disabled.
   ///
-  /// The button's [Material.textStyle] will be the current theme's button
-  /// text style, [ThemeData.textTheme.button], configured with this color.
+  /// The button's [Material.textStyle] will be the current theme's button text
+  /// style, [TextTheme.button] of [ThemeData.textTheme], configured with this
+  /// color.
   ///
   /// The default value is the theme's disabled color,
   /// [ThemeData.disabledColor].
@@ -311,6 +320,16 @@ class MaterialButton extends StatelessWidget {
   /// [ButtonThemeData.padding].
   final EdgeInsetsGeometry padding;
 
+  /// Defines how compact the button's layout will be.
+  ///
+  /// {@macro flutter.material.themedata.visualDensity}
+  ///
+  /// See also:
+  ///
+  ///  * [ThemeData.visualDensity], which specifies the [visualDensity] for all
+  ///    widgets within a [Theme].
+  final VisualDensity visualDensity;
+
   /// The shape of the button's [Material].
   ///
   /// The button's highlight and splash are clipped to this shape. If the
@@ -376,6 +395,7 @@ class MaterialButton extends StatelessWidget {
       onLongPress: onLongPress,
       enableFeedback: enableFeedback,
       onHighlightChanged: onHighlightChanged,
+      mouseCursor: mouseCursor,
       fillColor: buttonTheme.getFillColor(this),
       textStyle: theme.textTheme.button.copyWith(color: buttonTheme.getTextColor(this)),
       focusColor: focusColor ?? buttonTheme.getFocusColor(this) ?? theme.focusColor,
@@ -387,6 +407,7 @@ class MaterialButton extends StatelessWidget {
       hoverElevation: buttonTheme.getHoverElevation(this),
       highlightElevation: buttonTheme.getHighlightElevation(this),
       padding: buttonTheme.getPadding(this),
+      visualDensity: visualDensity ?? theme.visualDensity,
       constraints: buttonTheme.getConstraints(this).copyWith(
         minWidth: minWidth,
         minHeight: height,
@@ -398,6 +419,7 @@ class MaterialButton extends StatelessWidget {
       animationDuration: buttonTheme.getAnimationDuration(this),
       child: child,
       materialTapTargetSize: materialTapTargetSize ?? theme.materialTapTargetSize,
+      disabledElevation: disabledElevation ?? 0.0,
     );
   }
 
@@ -416,6 +438,7 @@ class MaterialButton extends StatelessWidget {
     properties.add(ColorProperty('splashColor', splashColor, defaultValue: null));
     properties.add(DiagnosticsProperty<Brightness>('colorBrightness', colorBrightness, defaultValue: null));
     properties.add(DiagnosticsProperty<EdgeInsetsGeometry>('padding', padding, defaultValue: null));
+    properties.add(DiagnosticsProperty<VisualDensity>('visualDensity', visualDensity, defaultValue: null));
     properties.add(DiagnosticsProperty<ShapeBorder>('shape', shape, defaultValue: null));
     properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode, defaultValue: null));
     properties.add(DiagnosticsProperty<MaterialTapTargetSize>('materialTapTargetSize', materialTapTargetSize, defaultValue: null));

@@ -1,6 +1,8 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+// @dart = 2.8
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -20,6 +22,11 @@ const EdgeInsets _kBackgroundButtonPadding = EdgeInsets.symmetric(
 ///
 /// Takes in a text or an icon that fades out and in on touch. May optionally have a
 /// background.
+///
+/// The [padding] defaults to 16.0 pixels. When using a [CupertinoButton] within
+/// a fixed height parent, like a [CupertinoNavigationBar], a smaller, or even
+/// [EdgeInsets.zero], should be used to prevent clipping larger [child]
+/// widgets.
 ///
 /// See also:
 ///

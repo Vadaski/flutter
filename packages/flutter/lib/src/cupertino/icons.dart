@@ -1,6 +1,8 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+// @dart = 2.8
 
 import 'package:flutter/widgets.dart';
 
@@ -26,6 +28,9 @@ import 'package:flutter/widgets.dart';
 ///  * [Icon], used to show these icons.
 ///  * <https://github.com/flutter/cupertino_icons/blob/master/map.png>, a map of the icons in this icons font.
 class CupertinoIcons {
+  // This class is not meant to be instantiated or extended; this constructor
+  // prevents instantiation and extension.
+  // ignore: unused_element
   CupertinoIcons._();
 
   /// The icon font used for Cupertino icons.

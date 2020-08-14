@@ -1,11 +1,14 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+// @dart = 2.8
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
+
+import '../flutter_test_alternative.dart' show Fake;
 
 class TestCustomPainter extends CustomPainter {
   TestCustomPainter({ this.log, this.name });
@@ -37,9 +40,23 @@ class TestCustomPainterWithCustomSemanticsBuilder extends TestCustomPainter {
   };
 }
 
-class MockCanvas extends Mock implements Canvas {}
+class MockCanvas extends Fake implements Canvas {
+  int saveCount = 0;
+  int saveCountDelta = 1;
 
-class MockPaintingContext extends Mock implements PaintingContext {}
+  @override
+  int getSaveCount() {
+    return saveCount += saveCountDelta;
+  }
+
+  @override
+  void save() { }
+}
+
+class MockPaintingContext extends Fake implements PaintingContext {
+  @override
+  final MockCanvas canvas = MockCanvas();
+}
 
 void main() {
   testWidgets('Control test for custom painting', (WidgetTester tester) async {
@@ -73,12 +90,9 @@ void main() {
       isComplex: true,
       painter: TestCustomPainter(log: log),
     ));
-    final RenderCustomPaint renderCustom = target.currentContext.findRenderObject();
-    final Canvas canvas = MockCanvas();
-    int saveCount = 0;
-    when(canvas.getSaveCount()).thenAnswer((_) => saveCount++);
-    final PaintingContext paintingContext = MockPaintingContext();
-    when(paintingContext.canvas).thenReturn(canvas);
+    final RenderCustomPaint renderCustom = target.currentContext.findRenderObject() as RenderCustomPaint;
+    final MockPaintingContext paintingContext = MockPaintingContext();
+    final MockCanvas canvas = paintingContext.canvas;
 
     FlutterError getError() {
       FlutterError error;
@@ -102,7 +116,7 @@ void main() {
       '   matching call to restore().\n'
     ));
 
-    when(canvas.getSaveCount()).thenAnswer((_) => saveCount--);
+    canvas.saveCountDelta = -1;
     error = getError();
     expect(error.toStringDeep(), equalsIgnoringHashCodes(
       'FlutterError\n'
@@ -115,11 +129,11 @@ void main() {
       '   saveLayer().\n'
     ));
 
-    when(canvas.getSaveCount()).thenAnswer((_) => saveCount += 2);
+    canvas.saveCountDelta = 2;
     error = getError();
     expect(error.toStringDeep(), contains('2 more times'));
 
-    when(canvas.getSaveCount()).thenAnswer((_) => saveCount -= 2);
+    canvas.saveCountDelta = -2;
     error = getError();
     expect(error.toStringDeep(), contains('2 more times'));
   });
@@ -132,8 +146,8 @@ void main() {
       isComplex: true,
       painter: TestCustomPainter(log: log),
     ));
-    final RenderCustomPaint renderCustom = target.currentContext.findRenderObject();
-    FlutterError error;
+    final RenderCustomPaint renderCustom = target.currentContext.findRenderObject() as RenderCustomPaint;
+    dynamic error;
     try {
       renderCustom.assembleSemanticsNode(
         null,
@@ -162,7 +176,7 @@ void main() {
     expect(error.toStringDeep(), equalsIgnoringHashCodes(
       'FlutterError\n'
       '   Failed to update the list of CustomPainterSemantics:\n'
-      '   - duplicate key [<\'0\'>] found at position 1\n'
+      "   - duplicate key [<'0'>] found at position 1\n"
     ));
   });
 
@@ -195,7 +209,7 @@ void main() {
     expect(target.currentContext.size, const Size(800.0, 600.0));
 
     await tester.pumpWidget(Center(
-      child: CustomPaint(key: target, child: Container(height: 0.0, width: 0.0)),
+      child: CustomPaint(key: target, child: const SizedBox(height: 0.0, width: 0.0)),
     ));
     expect(target.currentContext.size, Size.zero);
 
@@ -210,7 +224,7 @@ void main() {
       isComplex: true,
       painter: TestCustomPainter(log: log),
     ));
-    RenderCustomPaint renderCustom = target.currentContext.findRenderObject();
+    RenderCustomPaint renderCustom = target.currentContext.findRenderObject() as RenderCustomPaint;
     expect(renderCustom.isComplex, true);
     expect(renderCustom.willChange, false);
 
@@ -219,8 +233,13 @@ void main() {
       willChange: true,
       foregroundPainter: TestCustomPainter(log: log),
     ));
-    renderCustom = target.currentContext.findRenderObject();
+    renderCustom = target.currentContext.findRenderObject() as RenderCustomPaint;
     expect(renderCustom.isComplex, false);
     expect(renderCustom.willChange, true);
+  });
+
+  test('Raster cache hints cannot be set with null painters', () {
+    expect(() => CustomPaint(isComplex: true), throwsAssertionError);
+    expect(() => CustomPaint(willChange: true), throwsAssertionError);
   });
 }

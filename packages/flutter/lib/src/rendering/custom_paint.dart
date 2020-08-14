@@ -1,6 +1,8 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+// @dart = 2.8
 
 import 'dart:collection';
 
@@ -64,7 +66,7 @@ typedef SemanticsBuilderCallback = List<CustomPainterSemantics> Function(Size si
 /// class is provided, to check if the new instance contains different
 /// information that affects the semantics tree.
 ///
-/// {@tool sample}
+/// {@tool snippet}
 ///
 /// This sample extends the same code shown for [RadialGradient] to create a
 /// custom painter that paints a sky.
@@ -192,9 +194,9 @@ abstract class CustomPainter extends Listenable {
   ///
   /// If the returned function is null, this painter will not contribute new
   /// [SemanticsNode]s to the semantics tree and the [CustomPaint] corresponding
-  /// to this painter will not create a semantics boundary. However, if
-  /// [CustomPaint.child] is not null, the child may contribute [SemanticsNode]s
-  /// to the tree.
+  /// to this painter will not create a semantics boundary. However, if the
+  /// child of a [CustomPaint] is not null, the child may contribute
+  /// [SemanticsNode]s to the tree.
   ///
   /// See also:
   ///
@@ -790,7 +792,7 @@ class RenderCustomPaint extends RenderProxyBox {
     }
 
     assert(() {
-      for (SemanticsNode node in newChildren) {
+      for (final SemanticsNode node in newChildren) {
         assert(node != null);
       }
       return true;

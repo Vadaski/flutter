@@ -1,8 +1,11 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:convert' show utf8;
+import 'dart:convert' show jsonDecode;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart' show TestWidgetsFlutterBinding;
@@ -13,12 +16,10 @@ void main() {
 
   group('TextInput message channels', () {
     FakeTextChannel fakeTextChannel;
-    FakeTextInputClient client;
 
     setUp(() {
       fakeTextChannel = FakeTextChannel((MethodCall call) async {});
       TextInput.setChannel(fakeTextChannel);
-      client = FakeTextInputClient();
     });
 
     tearDown(() {
@@ -27,6 +28,26 @@ void main() {
     });
 
     test('text input client handler responds to reattach with setClient', () async {
+      final FakeTextInputClient client = FakeTextInputClient(const TextEditingValue(text: 'test1'));
+      TextInput.attach(client, client.configuration);
+      fakeTextChannel.validateOutgoingMethodCalls(<MethodCall>[
+        MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
+      ]);
+
+      fakeTextChannel.incoming(const MethodCall('TextInputClient.requestExistingInputState', null));
+
+      expect(fakeTextChannel.outgoingCalls.length, 3);
+      fakeTextChannel.validateOutgoingMethodCalls(<MethodCall>[
+        // From original attach
+        MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
+        // From requestExistingInputState
+        MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
+        MethodCall('TextInput.setEditingState', client.currentTextEditingValue.toJSON()),
+      ]);
+    });
+
+    test('text input client handler responds to reattach with setClient (null TextEditingValue)', () async {
+      final FakeTextInputClient client = FakeTextInputClient(null);
       TextInput.attach(client, client.configuration);
       fakeTextChannel.validateOutgoingMethodCalls(<MethodCall>[
         MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
@@ -42,36 +63,13 @@ void main() {
         MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
       ]);
     });
-
-    test('text input client handler responds to reattach with setClient and text state', () async {
-      final TextInputConnection connection = TextInput.attach(client, client.configuration);
-      fakeTextChannel.validateOutgoingMethodCalls(<MethodCall>[
-        MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
-      ]);
-
-      const TextEditingValue editingState = TextEditingValue(text: 'foo');
-      connection.setEditingState(editingState);
-      fakeTextChannel.validateOutgoingMethodCalls(<MethodCall>[
-        MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
-        MethodCall('TextInput.setEditingState', editingState.toJSON()),
-      ]);
-
-      fakeTextChannel.incoming(const MethodCall('TextInputClient.requestExistingInputState', null));
-
-      expect(fakeTextChannel.outgoingCalls.length, 4);
-      fakeTextChannel.validateOutgoingMethodCalls(<MethodCall>[
-        // attach
-        MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
-        // set editing state 1
-        MethodCall('TextInput.setEditingState', editingState.toJSON()),
-        // both from requestExistingInputState
-        MethodCall('TextInput.setClient', <dynamic>[1, client.configuration.toJson()]),
-        MethodCall('TextInput.setEditingState', editingState.toJSON()),
-      ]);
-    });
   });
 
   group('TextInputConfiguration', () {
+    tearDown(() {
+      TextInputConnection.debugResetId();
+    });
+
     test('sets expected defaults', () {
       const TextInputConfiguration configuration = TextInputConfiguration();
       expect(configuration.inputType, TextInputType.text);
@@ -153,7 +151,7 @@ void main() {
 
     test('TextInputClient onConnectionClosed method is called', () async {
       // Assemble a TextInputConnection so we can verify its change in state.
-      final FakeTextInputClient client = FakeTextInputClient();
+      final FakeTextInputClient client = FakeTextInputClient(const TextEditingValue(text: 'test3'));
       const TextInputConfiguration configuration = TextInputConfiguration();
       TextInput.attach(client, configuration);
 
@@ -172,46 +170,218 @@ void main() {
 
       expect(client.latestMethodCall, 'connectionClosed');
     });
+
+    test('TextInputClient performPrivateCommand method is called', () async {
+      // Assemble a TextInputConnection so we can verify its change in state.
+      final FakeTextInputClient client = FakeTextInputClient(null);
+      const TextInputConfiguration configuration = TextInputConfiguration();
+      TextInput.attach(client, configuration);
+
+      expect(client.latestMethodCall, isEmpty);
+
+      // Send performPrivateCommand message.
+      final ByteData messageBytes = const JSONMessageCodec().encodeMessage(<String, dynamic>{
+        'args': <dynamic>[
+          1,
+          jsonDecode(
+              '{"action": "actionCommand", "data": {\"input_context\" : \"abcdefg\"}}')
+        ],
+        'method': 'TextInputClient.performPrivateCommand',
+      });
+      await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        'flutter/textinput',
+        messageBytes,
+        (ByteData _) {},
+      );
+
+      expect(client.latestMethodCall, 'performPrivateCommand');
+    });
+
+    test('TextInputClient performPrivateCommand method is called with float',
+        () async {
+      // Assemble a TextInputConnection so we can verify its change in state.
+      final FakeTextInputClient client = FakeTextInputClient(null);
+      const TextInputConfiguration configuration = TextInputConfiguration();
+      TextInput.attach(client, configuration);
+
+      expect(client.latestMethodCall, isEmpty);
+
+      // Send performPrivateCommand message.
+      final ByteData messageBytes = const JSONMessageCodec().encodeMessage(<String, dynamic>{
+        'args': <dynamic>[
+          1,
+          jsonDecode(
+              '{"action": "actionCommand", "data": {\"input_context\" : 0.5}}')
+        ],
+        'method': 'TextInputClient.performPrivateCommand',
+      });
+      await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        'flutter/textinput',
+        messageBytes,
+        (ByteData _) {},
+      );
+
+      expect(client.latestMethodCall, 'performPrivateCommand');
+    });
+
+    test(
+        'TextInputClient performPrivateCommand method is called with CharSequence array',
+        () async {
+      // Assemble a TextInputConnection so we can verify its change in state.
+      final FakeTextInputClient client = FakeTextInputClient(null);
+      const TextInputConfiguration configuration = TextInputConfiguration();
+      TextInput.attach(client, configuration);
+
+      expect(client.latestMethodCall, isEmpty);
+
+      // Send performPrivateCommand message.
+      final ByteData messageBytes = const JSONMessageCodec().encodeMessage(<String, dynamic>{
+        'args': <dynamic>[
+          1,
+          jsonDecode(
+              '{"action": "actionCommand", "data": {\"input_context\" : ["abc", "efg"]}}')
+        ],
+        'method': 'TextInputClient.performPrivateCommand',
+      });
+      await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        'flutter/textinput',
+        messageBytes,
+        (ByteData _) {},
+      );
+
+      expect(client.latestMethodCall, 'performPrivateCommand');
+    });
+
+    test(
+        'TextInputClient performPrivateCommand method is called with CharSequence',
+        () async {
+      // Assemble a TextInputConnection so we can verify its change in state.
+      final FakeTextInputClient client = FakeTextInputClient(null);
+      const TextInputConfiguration configuration = TextInputConfiguration();
+      TextInput.attach(client, configuration);
+
+      expect(client.latestMethodCall, isEmpty);
+
+      // Send performPrivateCommand message.
+      final ByteData messageBytes =
+          const JSONMessageCodec().encodeMessage(<String, dynamic>{
+        'args': <dynamic>[
+          1,
+          jsonDecode(
+              '{"action": "actionCommand", "data": {\"input_context\" : "abc"}}')
+        ],
+        'method': 'TextInputClient.performPrivateCommand',
+      });
+      await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        'flutter/textinput',
+        messageBytes,
+        (ByteData _) {},
+      );
+
+      expect(client.latestMethodCall, 'performPrivateCommand');
+    });
+
+    test(
+        'TextInputClient performPrivateCommand method is called with float array',
+        () async {
+      // Assemble a TextInputConnection so we can verify its change in state.
+      final FakeTextInputClient client = FakeTextInputClient(null);
+      const TextInputConfiguration configuration = TextInputConfiguration();
+      TextInput.attach(client, configuration);
+
+      expect(client.latestMethodCall, isEmpty);
+
+      // Send performPrivateCommand message.
+      final ByteData messageBytes =
+          const JSONMessageCodec().encodeMessage(<String, dynamic>{
+        'args': <dynamic>[
+          1,
+          jsonDecode(
+              '{"action": "actionCommand", "data": {\"input_context\" : [0.5, 0.8]}}')
+        ],
+        'method': 'TextInputClient.performPrivateCommand',
+      });
+      await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        'flutter/textinput',
+        messageBytes,
+        (ByteData _) {},
+      );
+
+      expect(client.latestMethodCall, 'performPrivateCommand');
+    });
+
+    test('TextInputClient showAutocorrectionPromptRect method is called',
+        () async {
+      // Assemble a TextInputConnection so we can verify its change in state.
+      final FakeTextInputClient client = FakeTextInputClient(null);
+      const TextInputConfiguration configuration = TextInputConfiguration();
+      TextInput.attach(client, configuration);
+
+      expect(client.latestMethodCall, isEmpty);
+
+      // Send onConnectionClosed message.
+      final ByteData messageBytes =
+          const JSONMessageCodec().encodeMessage(<String, dynamic>{
+        'args': <dynamic>[1, 0, 1],
+        'method': 'TextInputClient.showAutocorrectionPromptRect',
+      });
+      await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        'flutter/textinput',
+        messageBytes,
+        (ByteData _) {},
+      );
+
+      expect(client.latestMethodCall, 'showAutocorrectionPromptRect');
+    });
   });
 
-  test('TextEditingValue handles JSON affinity', () async {
-    final Map<String, dynamic> json = <String, dynamic>{};
-    json['text'] = 'Xiaomuqiao';
+  test('TextEditingValue.isComposingRangeValid', () async {
+    // The composing range is empty.
+    expect(const TextEditingValue(text: '').isComposingRangeValid, isFalse);
 
-    TextEditingValue val = TextEditingValue.fromJSON(json);
-    expect(val.text, 'Xiaomuqiao');
-    expect(val.selection.baseOffset, -1);
-    expect(val.selection.extentOffset, -1);
-    expect(val.selection.affinity, null);
-    expect(val.selection.isDirectional, false);
-    expect(val.composing.start, -1);
-    expect(val.composing.end, -1);
+    expect(
+      const TextEditingValue(text: 'test', composing: TextRange(start: 1, end: 0)).isComposingRangeValid,
+      isFalse,
+    );
 
-    json['text'] = 'Xiaomuqiao';
-    json['selectionBase'] = 5;
-    json['selectionExtent'] = 6;
-    json['selectionAffinity'] = 'TextAffinity.upstream';
-    json['selectionIsDirectional'] = true;
-    json['composingBase'] = 7;
-    json['composingExtent'] = 8;
+    // The composing range is out of range for the text.
+    expect(
+      const TextEditingValue(text: 'test', composing: TextRange(start: 1, end: 5)).isComposingRangeValid,
+      isFalse,
+    );
 
-    val = TextEditingValue.fromJSON(json);
-    expect(val.text, 'Xiaomuqiao');
-    expect(val.selection.baseOffset, 5);
-    expect(val.selection.extentOffset, 6);
-    expect(val.selection.affinity, TextAffinity.upstream);
-    expect(val.selection.isDirectional, true);
-    expect(val.composing.start, 7);
-    expect(val.composing.end, 8);
+    // The composing range is out of range for the text.
+    expect(
+      const TextEditingValue(text: 'test', composing: TextRange(start: -1, end: 4)).isComposingRangeValid,
+      isFalse,
+    );
+
+    expect(
+      const TextEditingValue(text: 'test', composing: TextRange(start: 1, end: 4)).isComposingRangeValid,
+      isTrue,
+    );
   });
 }
 
 class FakeTextInputClient implements TextInputClient {
+  FakeTextInputClient(this.currentTextEditingValue);
+
   String latestMethodCall = '';
+
+  @override
+  TextEditingValue currentTextEditingValue;
+
+  @override
+  AutofillScope get currentAutofillScope => null;
 
   @override
   void performAction(TextInputAction action) {
     latestMethodCall = 'performAction';
+  }
+
+  @override
+  void performPrivateCommand(String action, Map<String, dynamic> data) {
+    latestMethodCall = 'performPrivateCommand';
   }
 
   @override
@@ -229,13 +399,18 @@ class FakeTextInputClient implements TextInputClient {
     latestMethodCall = 'connectionClosed';
   }
 
+  @override
+  void showAutocorrectionPromptRect(int start, int end) {
+    latestMethodCall = 'showAutocorrectionPromptRect';
+  }
+
   TextInputConfiguration get configuration => const TextInputConfiguration();
 }
 
 class FakeTextChannel implements MethodChannel {
   FakeTextChannel(this.outgoing) : assert(outgoing != null);
 
-  Future<void> Function(MethodCall) outgoing;
+  Future<dynamic> Function(MethodCall) outgoing;
   Future<void> Function(MethodCall) incoming;
 
   List<MethodCall> outgoingCalls = <MethodCall>[];
@@ -253,15 +428,14 @@ class FakeTextChannel implements MethodChannel {
   Future<Map<K, V>> invokeMapMethod<K, V>(String method, [dynamic arguments]) => throw UnimplementedError();
 
   @override
-  Future<T> invokeMethod<T>(String method, [dynamic arguments]) {
+  Future<T> invokeMethod<T>(String method, [dynamic arguments]) async {
     final MethodCall call = MethodCall(method, arguments);
     outgoingCalls.add(call);
-    return outgoing(call);
+    return await outgoing(call) as T;
   }
 
   @override
   String get name => 'flutter/textinput';
-
 
   @override
   void setMethodCallHandler(Future<void> Function(MethodCall call) handler) {
@@ -269,7 +443,14 @@ class FakeTextChannel implements MethodChannel {
   }
 
   @override
+  bool checkMethodCallHandler(Future<void> Function(MethodCall call) handler) => throw UnimplementedError();
+
+
+  @override
   void setMockMethodCallHandler(Future<void> Function(MethodCall call) handler)  => throw UnimplementedError();
+
+  @override
+  bool checkMockMethodCallHandler(Future<void> Function(MethodCall call) handler) => throw UnimplementedError();
 
   void validateOutgoingMethodCalls(List<MethodCall> calls) {
     expect(outgoingCalls.length, calls.length);
@@ -283,7 +464,7 @@ class FakeTextChannel implements MethodChannel {
       if (outgoingString != expectedString) {
         print(
           'Index $i did not match:\n'
-          '  actual: ${outgoingCalls[i]}'
+          '  actual:   ${outgoingCalls[i]}\n'
           '  expected: ${calls[i]}');
         hasError = true;
       }

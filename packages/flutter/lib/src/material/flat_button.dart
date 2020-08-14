@@ -1,8 +1,11 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button.dart';
@@ -40,7 +43,7 @@ import 'theme_data.dart';
 ///
 /// The [clipBehavior] argument must not be null.
 ///
-/// {@tool sample}
+/// {@tool snippet}
 ///
 /// This example shows a simple [FlatButton].
 ///
@@ -58,7 +61,7 @@ import 'theme_data.dart';
 /// ```
 /// {@end-tool}
 ///
-/// {@tool sample}
+/// {@tool snippet}
 ///
 /// This example shows a [FlatButton] that is normally white-on-blue,
 /// with splashes rendered in a different shade of blue.
@@ -95,6 +98,7 @@ import 'theme_data.dart';
 ///  * [InkWell], which implements the ink splash part of a flat button.
 ///  * [RawMaterialButton], the widget this widget is based on.
 ///  * <https://material.io/design/components/buttons.html>
+///  * Cookbook: [Build a form with validation](https://flutter.dev/docs/cookbook/forms/validation)
 class FlatButton extends MaterialButton {
   /// Create a simple text button.
   ///
@@ -104,6 +108,7 @@ class FlatButton extends MaterialButton {
     @required VoidCallback onPressed,
     VoidCallback onLongPress,
     ValueChanged<bool> onHighlightChanged,
+    MouseCursor mouseCursor,
     ButtonTextTheme textTheme,
     Color textColor,
     Color disabledTextColor,
@@ -115,19 +120,25 @@ class FlatButton extends MaterialButton {
     Color splashColor,
     Brightness colorBrightness,
     EdgeInsetsGeometry padding,
+    VisualDensity visualDensity,
     ShapeBorder shape,
     Clip clipBehavior = Clip.none,
     FocusNode focusNode,
     bool autofocus = false,
     MaterialTapTargetSize materialTapTargetSize,
     @required Widget child,
+    double height,
+    double minWidth,
   }) : assert(clipBehavior != null),
        assert(autofocus != null),
        super(
          key: key,
+         height: height,
+         minWidth: minWidth,
          onPressed: onPressed,
          onLongPress: onLongPress,
          onHighlightChanged: onHighlightChanged,
+         mouseCursor: mouseCursor,
          textTheme: textTheme,
          textColor: textColor,
          disabledTextColor: disabledTextColor,
@@ -139,6 +150,7 @@ class FlatButton extends MaterialButton {
          splashColor: splashColor,
          colorBrightness: colorBrightness,
          padding: padding,
+         visualDensity: visualDensity,
          shape: shape,
          clipBehavior: clipBehavior,
          focusNode: focusNode,
@@ -159,6 +171,7 @@ class FlatButton extends MaterialButton {
     @required VoidCallback onPressed,
     VoidCallback onLongPress,
     ValueChanged<bool> onHighlightChanged,
+    MouseCursor mouseCursor,
     ButtonTextTheme textTheme,
     Color textColor,
     Color disabledTextColor,
@@ -177,6 +190,8 @@ class FlatButton extends MaterialButton {
     MaterialTapTargetSize materialTapTargetSize,
     @required Widget icon,
     @required Widget label,
+    double minWidth,
+    double height,
   }) = _FlatButtonWithIcon;
 
   @override
@@ -187,6 +202,7 @@ class FlatButton extends MaterialButton {
       onPressed: onPressed,
       onLongPress: onLongPress,
       onHighlightChanged: onHighlightChanged,
+      mouseCursor: mouseCursor,
       fillColor: buttonTheme.getFillColor(this),
       textStyle: theme.textTheme.button.copyWith(color: buttonTheme.getTextColor(this)),
       focusColor: buttonTheme.getFocusColor(this),
@@ -199,7 +215,11 @@ class FlatButton extends MaterialButton {
       highlightElevation: buttonTheme.getHighlightElevation(this),
       disabledElevation: buttonTheme.getDisabledElevation(this),
       padding: buttonTheme.getPadding(this),
-      constraints: buttonTheme.getConstraints(this),
+      visualDensity: visualDensity ?? theme.visualDensity,
+      constraints: buttonTheme.getConstraints(this).copyWith(
+        minWidth: minWidth,
+        minHeight: height,
+      ),
       shape: buttonTheme.getShape(this),
       clipBehavior: clipBehavior,
       focusNode: focusNode,
@@ -221,6 +241,7 @@ class _FlatButtonWithIcon extends FlatButton with MaterialButtonWithIconMixin {
     @required VoidCallback onPressed,
     VoidCallback onLongPress,
     ValueChanged<bool> onHighlightChanged,
+    MouseCursor mouseCursor,
     ButtonTextTheme textTheme,
     Color textColor,
     Color disabledTextColor,
@@ -239,6 +260,8 @@ class _FlatButtonWithIcon extends FlatButton with MaterialButtonWithIconMixin {
     MaterialTapTargetSize materialTapTargetSize,
     @required Widget icon,
     @required Widget label,
+    double minWidth,
+    double height,
   }) : assert(icon != null),
        assert(label != null),
        assert(clipBehavior != null),
@@ -248,6 +271,7 @@ class _FlatButtonWithIcon extends FlatButton with MaterialButtonWithIconMixin {
          onPressed: onPressed,
          onLongPress: onLongPress,
          onHighlightChanged: onHighlightChanged,
+         mouseCursor: mouseCursor,
          textTheme: textTheme,
          textColor: textColor,
          disabledTextColor: disabledTextColor,
@@ -272,6 +296,8 @@ class _FlatButtonWithIcon extends FlatButton with MaterialButtonWithIconMixin {
              label,
            ],
          ),
+         minWidth: minWidth,
+         height: height,
        );
 
 }

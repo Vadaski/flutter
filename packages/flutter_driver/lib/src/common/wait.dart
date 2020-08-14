@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,6 +31,9 @@ class WaitForCondition extends Command {
 
   @override
   String get kind => 'waitForCondition';
+
+  @override
+  bool get requiresRootWidgetAttached => condition.requiresRootWidgetAttached;
 }
 
 /// A Flutter Driver command that waits until there are no more transient callbacks in the queue.
@@ -132,9 +135,9 @@ class SerializationException implements Exception {
 ///
 /// This class is sent from the driver script running on the host to the driver
 /// extension on device to perform waiting on a given condition. In the extension,
-/// it will be converted to a [WaitCondition] that actually defines the wait logic.
+/// it will be converted to a `WaitCondition` that actually defines the wait logic.
 ///
-/// If you subclass this, you also need to implement a [WaitCondition] in the extension.
+/// If you subclass this, you also need to implement a `WaitCondition` in the extension.
 abstract class SerializableWaitCondition {
   /// A const constructor to allow subclasses to be const.
   const SerializableWaitCondition();
@@ -148,6 +151,20 @@ abstract class SerializableWaitCondition {
       'conditionName': conditionName
     };
   }
+
+  /// Whether this command requires the widget tree to be initialized before
+  /// the command may be run.
+  ///
+  /// This defaults to true to force the application under test to call [runApp]
+  /// before attempting to remotely drive the application. Subclasses may
+  /// override this to return false if they allow invocation before the
+  /// application has started.
+  ///
+  /// See also:
+  ///
+  ///  * [WidgetsBinding.isRootWidgetAttached], which indicates whether the
+  ///    widget tree has been initialized.
+  bool get requiresRootWidgetAttached => true;
 }
 
 /// A condition that waits until no transient callbacks are scheduled.
@@ -159,7 +176,7 @@ class NoTransientCallbacks extends SerializableWaitCondition {
   /// given JSON map.
   ///
   /// The [json] argument must not be null.
-  factory NoTransientCallbacks.deserialize(Map<String, dynamic> json) {
+  factory NoTransientCallbacks.deserialize(Map<String, String> json) {
     assert(json != null);
     if (json['conditionName'] != 'NoTransientCallbacksCondition')
       throw SerializationException('Error occurred during deserializing the NoTransientCallbacksCondition JSON string: $json');
@@ -179,7 +196,7 @@ class NoPendingFrame extends SerializableWaitCondition {
   /// JSON map.
   ///
   /// The [json] argument must not be null.
-  factory NoPendingFrame.deserialize(Map<String, dynamic> json) {
+  factory NoPendingFrame.deserialize(Map<String, String> json) {
     assert(json != null);
     if (json['conditionName'] != 'NoPendingFrameCondition')
       throw SerializationException('Error occurred during deserializing the NoPendingFrameCondition JSON string: $json');
@@ -199,7 +216,7 @@ class FirstFrameRasterized extends SerializableWaitCondition {
   /// given JSON map.
   ///
   /// The [json] argument must not be null.
-  factory FirstFrameRasterized.deserialize(Map<String, dynamic> json) {
+  factory FirstFrameRasterized.deserialize(Map<String, String> json) {
     assert(json != null);
     if (json['conditionName'] != 'FirstFrameRasterizedCondition')
       throw SerializationException('Error occurred during deserializing the FirstFrameRasterizedCondition JSON string: $json');
@@ -208,6 +225,9 @@ class FirstFrameRasterized extends SerializableWaitCondition {
 
   @override
   String get conditionName => 'FirstFrameRasterizedCondition';
+
+  @override
+  bool get requiresRootWidgetAttached => false;
 }
 
 /// A condition that waits until there are no pending platform messages.
@@ -219,7 +239,7 @@ class NoPendingPlatformMessages extends SerializableWaitCondition {
   /// given JSON map.
   ///
   /// The [json] argument must not be null.
-  factory NoPendingPlatformMessages.deserialize(Map<String, dynamic> json) {
+  factory NoPendingPlatformMessages.deserialize(Map<String, String> json) {
     assert(json != null);
     if (json['conditionName'] != 'NoPendingPlatformMessagesCondition')
       throw SerializationException('Error occurred during deserializing the NoPendingPlatformMessagesCondition JSON string: $json');
@@ -242,7 +262,7 @@ class CombinedCondition extends SerializableWaitCondition {
   /// given JSON map.
   ///
   /// The [jsonMap] argument must not be null.
-  factory CombinedCondition.deserialize(Map<String, dynamic> jsonMap) {
+  factory CombinedCondition.deserialize(Map<String, String> jsonMap) {
     assert(jsonMap != null);
     if (jsonMap['conditionName'] != 'CombinedCondition')
       throw SerializationException('Error occurred during deserializing the CombinedCondition JSON string: $jsonMap');
@@ -251,8 +271,8 @@ class CombinedCondition extends SerializableWaitCondition {
     }
 
     final List<SerializableWaitCondition> conditions = <SerializableWaitCondition>[];
-    for (Map<String, dynamic> condition in json.decode(jsonMap['conditions'])) {
-      conditions.add(_deserialize(condition));
+    for (final Map<String, dynamic> condition in (json.decode(jsonMap['conditions']) as List<dynamic>).cast<Map<String, dynamic>>()) {
+      conditions.add(_deserialize(condition.cast<String, String>()));
     }
     return CombinedCondition(conditions);
   }
@@ -279,7 +299,7 @@ class CombinedCondition extends SerializableWaitCondition {
 /// Parses a [SerializableWaitCondition] or its subclass from the given [json] map.
 ///
 /// The [json] argument must not be null.
-SerializableWaitCondition _deserialize(Map<String, dynamic> json) {
+SerializableWaitCondition _deserialize(Map<String, String> json) {
   assert(json != null);
   final String conditionName = json['conditionName'];
   switch (conditionName) {

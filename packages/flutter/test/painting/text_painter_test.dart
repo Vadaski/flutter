@@ -1,6 +1,8 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+// @dart = 2.8
 
 import 'dart:ui' as ui;
 
@@ -25,13 +27,14 @@ void main() {
     caretOffset = painter.getOffsetForCaret(ui.TextPosition(offset: text.length), ui.Rect.zero);
     expect(caretOffset.dx, painter.width);
 
-    // Check that getOffsetForCaret handles a character that is encoded as a surrogate pair.
+    // Check that getOffsetForCaret handles a character that is encoded as a
+    // surrogate pair.
     text = 'A\u{1F600}';
     painter.text = TextSpan(text: text);
     painter.layout();
     caretOffset = painter.getOffsetForCaret(ui.TextPosition(offset: text.length), ui.Rect.zero);
     expect(caretOffset.dx, painter.width);
-  }, skip: isBrowser);
+  });
 
   test('TextPainter null text test', () {
     final TextPainter painter = TextPainter()
@@ -56,7 +59,7 @@ void main() {
     expect(caretOffset.dx, 0);
     caretOffset = painter.getOffsetForCaret(const ui.TextPosition(offset: 1), ui.Rect.zero);
     expect(caretOffset.dx, 0);
-  }, skip: isBrowser);
+  });
 
   test('TextPainter caret emoji test', () {
     final TextPainter painter = TextPainter()
@@ -120,7 +123,7 @@ void main() {
     expect(caretOffset.dx, 112); // 🇸
     caretOffset = painter.getOffsetForCaret(const ui.TextPosition(offset: 22), ui.Rect.zero);
     expect(caretOffset.dx, 112); // 🇸
-  }, skip: isBrowser);
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/56308
 
   test('TextPainter caret center space test', () {
     final TextPainter painter = TextPainter()
@@ -142,7 +145,7 @@ void main() {
     expect(caretOffset.dx, 35);
     caretOffset = painter.getOffsetForCaret(const ui.TextPosition(offset: 2), ui.Rect.zero);
     expect(caretOffset.dx, 49);
-  }, skip: isBrowser);
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/56308
 
   test('TextPainter error test', () {
     final TextPainter painter = TextPainter(textDirection: TextDirection.ltr);
@@ -170,7 +173,7 @@ void main() {
     );
     painter.layout();
     expect(painter.size, const Size(123.0, 123.0));
-  }, skip: isBrowser);
+  });
 
   test('TextPainter textScaleFactor test', () {
     final TextPainter painter = TextPainter(
@@ -187,7 +190,7 @@ void main() {
     );
     painter.layout();
     expect(painter.size, const Size(20.0, 20.0));
-  }, skip: isBrowser);
+  });
 
   test('TextPainter default text height is 14 pixels', () {
     final TextPainter painter = TextPainter(
@@ -197,7 +200,7 @@ void main() {
     painter.layout();
     expect(painter.preferredLineHeight, 14.0);
     expect(painter.size, const Size(14.0, 14.0));
-  }, skip: isBrowser);
+  });
 
   test('TextPainter sets paragraph size from root', () {
     final TextPainter painter = TextPainter(
@@ -207,7 +210,7 @@ void main() {
     painter.layout();
     expect(painter.preferredLineHeight, 100.0);
     expect(painter.size, const Size(100.0, 100.0));
-  }, skip: isBrowser);
+  });
 
   test('TextPainter intrinsic dimensions', () {
     const TextStyle style = TextStyle(
@@ -634,7 +637,7 @@ void main() {
     );
     expect(caretOffset.dx, closeTo(0.0, 0.0001));
     expect(caretOffset.dy, closeTo(0.0, 0.0001));
-  }, skip: isBrowser);
+  });
 
   test('TextPainter widget span', () {
     final TextPainter painter = TextPainter()
@@ -728,7 +731,16 @@ void main() {
     expect(painter.inlinePlaceholderBoxes[11], const TextBox.fromLTRBD(250, 30, 300, 60, TextDirection.ltr));
     expect(painter.inlinePlaceholderBoxes[12], const TextBox.fromLTRBD(300, 30, 351, 60, TextDirection.ltr));
     expect(painter.inlinePlaceholderBoxes[13], const TextBox.fromLTRBD(351, 30, 401, 60, TextDirection.ltr));
-  }, skip: isBrowser);
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/42086
+
+  // Null values are valid. See https://github.com/flutter/flutter/pull/48346#issuecomment-584839221
+  test('TextPainter set TextHeightBehavior null test', () {
+    final TextPainter painter = TextPainter(textHeightBehavior: null)
+      ..textDirection = TextDirection.ltr;
+
+    painter.textHeightBehavior = const TextHeightBehavior();
+    painter.textHeightBehavior = null;
+  });
 
   test('TextPainter line metrics', () {
     final TextPainter painter = TextPainter()
@@ -740,6 +752,9 @@ void main() {
     );
 
     painter.layout(maxWidth: 300);
+
+    expect(painter.text, const TextSpan(text: text));
+    expect(painter.preferredLineHeight, 14);
 
     final List<ui.LineMetrics> lines = painter.computeLineMetrics();
 
@@ -789,43 +804,21 @@ void main() {
     expect(lines[1].lineNumber, 1);
     expect(lines[2].lineNumber, 2);
     expect(lines[3].lineNumber, 3);
-  }, skip: !isLinux);
+  }, skip: true); // https://github.com/flutter/flutter/issues/62819
 
-  test('getLineBoundary', () {
+  test('TextPainter caret height and line height', () {
     final TextPainter painter = TextPainter()
-      ..textDirection = TextDirection.ltr;
+      ..textDirection = TextDirection.ltr
+      ..strutStyle = const StrutStyle(fontSize: 50.0);
 
-    const String text = 'test1\nhello line two really long for soft break\nfinal line 4';
-    painter.text = const TextSpan(
-      text: text,
+    const String text = 'A';
+    painter.text = const TextSpan(text: text, style: TextStyle(height: 1.0));
+    painter.layout();
+
+    final double caretHeight = painter.getFullHeightForCaret(
+      const ui.TextPosition(offset: 0),
+      ui.Rect.zero,
     );
-
-    painter.layout(maxWidth: 300);
-
-    final List<ui.LineMetrics> lines = painter.computeLineMetrics();
-
-    expect(lines.length, 4);
-
-    expect(painter.getLineBoundary(const TextPosition(offset: -1)), const TextRange(start: -1, end: -1));
-
-    expect(painter.getLineBoundary(const TextPosition(offset: 0)), const TextRange(start: 0, end: 5));
-    expect(painter.getLineBoundary(const TextPosition(offset: 1)), const TextRange(start: 0, end: 5));
-    expect(painter.getLineBoundary(const TextPosition(offset: 4)), const TextRange(start: 0, end: 5));
-    expect(painter.getLineBoundary(const TextPosition(offset: 5)), const TextRange(start: 0, end: 5));
-
-    expect(painter.getLineBoundary(const TextPosition(offset: 10)), const TextRange(start: 6, end: 28));
-    expect(painter.getLineBoundary(const TextPosition(offset: 15)), const TextRange(start: 6, end: 28));
-    expect(painter.getLineBoundary(const TextPosition(offset: 21)), const TextRange(start: 6, end: 28));
-    expect(painter.getLineBoundary(const TextPosition(offset: 28)), const TextRange(start: 6, end: 28));
-
-    expect(painter.getLineBoundary(const TextPosition(offset: 29)), const TextRange(start: 28, end: 47));
-    expect(painter.getLineBoundary(const TextPosition(offset: 47)), const TextRange(start: 28, end: 47));
-
-    expect(painter.getLineBoundary(const TextPosition(offset: 48)), const TextRange(start: 48, end: 60));
-    expect(painter.getLineBoundary(const TextPosition(offset: 49)), const TextRange(start: 48, end: 60));
-    expect(painter.getLineBoundary(const TextPosition(offset: 60)), const TextRange(start: 48, end: 60));
-
-    expect(painter.getLineBoundary(const TextPosition(offset: 61)), const TextRange(start: -1, end: -1));
-    expect(painter.getLineBoundary(const TextPosition(offset: 100)), const TextRange(start: -1, end: -1));
-  }, skip: !isLinux);
+    expect(caretHeight, 50.0);
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/56308
 }
